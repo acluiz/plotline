@@ -9,7 +9,11 @@ describe('ListBooksUseCase', () => {
 
   beforeEach(() => {
     findAll = jest.fn<Promise<Book[]>, []>();
-    const repository: BookRepository = { save: jest.fn(), findAll };
+    const repository: BookRepository = {
+      save: jest.fn(),
+      findAll,
+      findById: jest.fn(),
+    };
     useCase = new ListBooksUseCase(repository);
   });
 

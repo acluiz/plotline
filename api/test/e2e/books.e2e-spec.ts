@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -220,5 +221,70 @@ describe('Books (e2e)', () => {
       const dune = books.find((book) => book.title === 'Dune');
       expect(dune).toMatchObject({ pages: null, genre: null });
     });
+  });
+  describe('GET /api/v1/books/:id', () => {
+    it('returns 200 and the book details', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/books')
+        .send({
+          title: 'Clean Architecture',
+          author: 'Robert C. Martin',
+          pages: 432,
+          genre: 'Technology',
+        })
+        .expect(201);
+      const { id } = created.body as BookResponse;
+
+      const response = await request(app.getHttpServer())
+        .get(`/api/v1/books/${id}`)
+        .expect(200);
+
+      expect(response.body).toEqual(created.body);
+    });
+
+    it('returns null for optional fields that were not provided', async () => {
+      const created = await request(app.getHttpServer())
+        .post('/api/v1/books')
+        .send({ title: 'Dune', author: 'Frank Herbert' })
+        .expect(201);
+      const { id } = created.body as BookResponse;
+
+      const response = await request(app.getHttpServer())
+        .get(`/api/v1/books/${id}`)
+        .expect(200);
+
+      expect(response.body).toMatchObject({
+        id,
+        pages: null,
+        genre: null,
+        status: 'WANT_TO_READ',
+      });
+    });
+
+    it('returns 404 when the book does not exist', async () => {
+      const id = randomUUID();
+
+      const response = await request(app.getHttpServer())
+        .get(`/api/v1/books/${id}`)
+        .expect(404);
+
+      const body = response.body as ErrorResponse;
+      expect(body.statusCode).toBe(404);
+      expect(body.error).toBe('Not Found');
+      expect(body.message).toBe(`Book with id ${id} not found`);
+    });
+
+    it.each(['not-a-uuid', '123', 'abc-def'])(
+      'returns 400 when the id %p is not a valid UUID',
+      async (id) => {
+        const response = await request(app.getHttpServer())
+          .get(`/api/v1/books/${id}`)
+          .expect(400);
+
+        const body = response.body as ErrorResponse;
+        expect(body.statusCode).toBe(400);
+        expect(body.error).toBe('Bad Request');
+      },
+    );
   });
 });

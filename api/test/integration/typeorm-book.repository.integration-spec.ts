@@ -110,4 +110,35 @@ describe('TypeOrmBookRepository (integration)', () => {
       });
     });
   });
+  describe('findById', () => {
+    it('returns the book as a domain entity when it exists', async () => {
+      const book = Book.create({
+        title: 'Clean Architecture',
+        author: 'Robert C. Martin',
+        pages: 432,
+        genre: 'Technology',
+      });
+      await repository.save(book);
+
+      const found = await repository.findById(book.id);
+
+      expect(found).toBeInstanceOf(Book);
+      expect(found).toMatchObject({
+        id: book.id,
+        title: 'Clean Architecture',
+        author: 'Robert C. Martin',
+        pages: 432,
+        genre: 'Technology',
+        status: ReadingStatus.WANT_TO_READ,
+      });
+      expect(found?.createdAt).toEqual(book.createdAt);
+      expect(found?.updatedAt).toEqual(book.updatedAt);
+    });
+
+    it('returns null when the book does not exist', async () => {
+      await expect(
+        repository.findById('3f8c1e5a-6d2b-4b7e-9a41-0c5d7e2f9b10'),
+      ).resolves.toBeNull();
+    });
+  });
 });

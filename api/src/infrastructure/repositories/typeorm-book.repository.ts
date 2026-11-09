@@ -25,4 +25,9 @@ export class TypeOrmBookRepository implements BookRepository {
     const rows = await this.repository.find({ order: { createdAt: 'ASC' } });
     return rows.map((row) => BookMapper.toDomain(row));
   }
+
+  async findById(id: string): Promise<Book | null> {
+    const row = await this.repository.findOneBy({ id });
+    return row ? BookMapper.toDomain(row) : null;
+  }
 }
