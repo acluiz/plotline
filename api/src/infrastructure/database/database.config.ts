@@ -32,9 +32,7 @@ export function buildDataSourceOptions(
     url,
     schema: env.DATABASE_SCHEMA || 'public',
     ssl: useSsl ? { rejectUnauthorized: false } : false,
-    entities: [
-      join(__dirname, '..', 'persistence', '**', '*.orm-entity.{ts,js}'),
-    ],
+    entities: [join(__dirname, '..', 'entities', '*.orm-entity.{ts,js}')],
     migrations: [join(__dirname, 'migrations', '*.{ts,js}')],
     synchronize: false,
     migrationsRun: false,
