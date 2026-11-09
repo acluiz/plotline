@@ -10,7 +10,7 @@ describe('CreateBookUseCase', () => {
 
   beforeEach(() => {
     save = jest.fn((book: Book) => Promise.resolve(book));
-    const repository: BookRepository = { save };
+    const repository: BookRepository = { save, findAll: jest.fn() };
     useCase = new CreateBookUseCase(repository);
   });
 

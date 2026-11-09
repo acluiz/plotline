@@ -196,6 +196,107 @@
               "body": "{\n  \"message\": \"title is required\",\n  \"error\": \"Bad Request\",\n  \"statusCode\": 400\n}"
             }
           ]
+        },
+        {
+          "name": "List books",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "",
+                  "const books = pm.response.json();",
+                  "",
+                  "pm.test('Returns an array', () => pm.expect(books).to.be.an('array'));",
+                  "",
+                  "pm.test('Each book has the expected fields', () => {",
+                  "  books.forEach((book) => {",
+                  "    pm.expect(book).to.have.all.keys('id', 'title', 'author', 'pages', 'genre', 'status', 'createdAt', 'updatedAt');",
+                  "    pm.expect(book.status).to.be.oneOf(['WANT_TO_READ', 'READING', 'READ']);",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/books",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "books"
+              ]
+            },
+            "description": "Returns all registered books ordered by creation date (oldest first). Returns an empty array when there are no books."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/books",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "books"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "[\n  {\n    \"id\": \"3f8c1e5a-6d2b-4b7e-9a41-0c5d7e2f9b10\",\n    \"title\": \"Clean Architecture\",\n    \"author\": \"Robert C. Martin\",\n    \"pages\": 432,\n    \"genre\": \"Technology\",\n    \"status\": \"WANT_TO_READ\",\n    \"createdAt\": \"2026-11-09T22:00:00.000Z\",\n    \"updatedAt\": \"2026-11-09T22:00:00.000Z\"\n  },\n  {\n    \"id\": \"9a7d2c44-1b3e-4f6a-8c05-7e1d3b5a2f61\",\n    \"title\": \"Dune\",\n    \"author\": \"Frank Herbert\",\n    \"pages\": null,\n    \"genre\": null,\n    \"status\": \"READING\",\n    \"createdAt\": \"2026-11-09T22:05:00.000Z\",\n    \"updatedAt\": \"2026-11-09T22:30:00.000Z\"\n  }\n]"
+            },
+            {
+              "name": "200 OK (no books)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/books",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "books"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "[]"
+            }
+          ]
         }
       ]
     }

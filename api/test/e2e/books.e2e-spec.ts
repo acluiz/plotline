@@ -172,4 +172,53 @@ describe('Books (e2e)', () => {
       });
     });
   });
+
+  describe('GET /api/v1/books', () => {
+    it('returns 200 and an empty array when there are no books', async () => {
+      const response = await request(app.getHttpServer())
+        .get('/api/v1/books')
+        .expect(200);
+
+      expect(response.body).toEqual([]);
+    });
+
+    it('returns all registered books', async () => {
+      await request(app.getHttpServer())
+        .post('/api/v1/books')
+        .send({
+          title: 'Clean Architecture',
+          author: 'Robert C. Martin',
+          pages: 432,
+          genre: 'Technology',
+        })
+        .expect(201);
+      await request(app.getHttpServer())
+        .post('/api/v1/books')
+        .send({ title: 'Dune', author: 'Frank Herbert' })
+        .expect(201);
+
+      const response = await request(app.getHttpServer())
+        .get('/api/v1/books')
+        .expect(200);
+
+      const books = response.body as BookResponse[];
+      expect(books).toHaveLength(2);
+      expect(books.map((book) => book.title).sort()).toEqual([
+        'Clean Architecture',
+        'Dune',
+      ]);
+      const cleanArchitecture = books.find(
+        (book) => book.title === 'Clean Architecture',
+      );
+      expect(cleanArchitecture).toMatchObject({
+        author: 'Robert C. Martin',
+        pages: 432,
+        genre: 'Technology',
+        status: 'WANT_TO_READ',
+      });
+      expect(cleanArchitecture?.id).toMatch(UUID_REGEX);
+      const dune = books.find((book) => book.title === 'Dune');
+      expect(dune).toMatchObject({ pages: null, genre: null });
+    });
+  });
 });

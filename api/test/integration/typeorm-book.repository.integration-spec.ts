@@ -71,4 +71,43 @@ describe('TypeOrmBookRepository (integration)', () => {
       expect(saved.status).toBe(ReadingStatus.WANT_TO_READ);
     });
   });
+  describe('findAll', () => {
+    it('returns an empty array when there are no books', async () => {
+      await expect(repository.findAll()).resolves.toEqual([]);
+    });
+
+    it('returns all books as domain entities ordered by creation date', async () => {
+      const oldest = Book.create(
+        { title: 'Oldest', author: 'Author' },
+        new Date('2026-01-01T10:00:00.000Z'),
+      );
+      const middle = Book.create(
+        { title: 'Middle', author: 'Author', pages: 100, genre: 'Fiction' },
+        new Date('2026-01-02T10:00:00.000Z'),
+      );
+      const newest = Book.create(
+        { title: 'Newest', author: 'Author' },
+        new Date('2026-01-03T10:00:00.000Z'),
+      );
+      await repository.save(newest);
+      await repository.save(oldest);
+      await repository.save(middle);
+
+      const books = await repository.findAll();
+
+      expect(books).toHaveLength(3);
+      books.forEach((book) => expect(book).toBeInstanceOf(Book));
+      expect(books.map((book) => book.title)).toEqual([
+        'Oldest',
+        'Middle',
+        'Newest',
+      ]);
+      expect(books[1]).toMatchObject({
+        id: middle.id,
+        pages: 100,
+        genre: 'Fiction',
+        status: ReadingStatus.WANT_TO_READ,
+      });
+    });
+  });
 });
