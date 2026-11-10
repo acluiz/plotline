@@ -465,4 +465,125 @@ describe('Books (e2e)', () => {
       );
     });
   });
+  describe('PATCH /api/v1/books/:id/status', () => {
+    async function createBook(): Promise<BookResponse> {
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/books')
+        .send({
+          title: 'Clean Architecture',
+          author: 'Robert C. Martin',
+          pages: 432,
+          genre: 'Technology',
+        })
+        .expect(201);
+      return response.body as BookResponse;
+    }
+
+    it.each(['READING', 'READ', 'WANT_TO_READ'])(
+      'changes the status to %s and returns 200',
+      async (status) => {
+        const created = await createBook();
+
+        const response = await request(app.getHttpServer())
+          .patch(`/api/v1/books/${created.id}/status`)
+          .send({ status })
+          .expect(200);
+
+        const body = response.body as BookResponse;
+        expect(body).toMatchObject({
+          id: created.id,
+          title: 'Clean Architecture',
+          author: 'Robert C. Martin',
+          pages: 432,
+          genre: 'Technology',
+          status,
+          createdAt: created.createdAt,
+        });
+        expect(Date.parse(body.updatedAt)).toBeGreaterThanOrEqual(
+          Date.parse(created.updatedAt),
+        );
+      },
+    );
+
+    it('persists the new status in the database', async () => {
+      const created = await createBook();
+
+      await request(app.getHttpServer())
+        .patch(`/api/v1/books/${created.id}/status`)
+        .send({ status: 'READING' })
+        .expect(200);
+
+      const row = await bookRepository.findOneByOrFail({ id: created.id });
+      expect(row.status).toBe('READING');
+      expect(row.title).toBe('Clean Architecture');
+      expect(await bookRepository.count()).toBe(1);
+    });
+
+    it('is reflected when the book is fetched afterwards', async () => {
+      const created = await createBook();
+
+      await request(app.getHttpServer())
+        .patch(`/api/v1/books/${created.id}/status`)
+        .send({ status: 'READ' })
+        .expect(200);
+
+      const response = await request(app.getHttpServer())
+        .get(`/api/v1/books/${created.id}`)
+        .expect(200);
+      expect((response.body as BookResponse).status).toBe('READ');
+    });
+
+    it('returns 404 when the book does not exist', async () => {
+      const id = randomUUID();
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/v1/books/${id}/status`)
+        .send({ status: 'READING' })
+        .expect(404);
+
+      const body = response.body as ErrorResponse;
+      expect(body.statusCode).toBe(404);
+      expect(body.error).toBe('Not Found');
+      expect(body.message).toBe(`Book with id ${id} not found`);
+    });
+
+    it('returns 400 when the id is not a valid UUID', async () => {
+      await request(app.getHttpServer())
+        .patch('/api/v1/books/not-a-uuid/status')
+        .send({ status: 'READING' })
+        .expect(400);
+    });
+
+    describe('validation errors', () => {
+      it.each([
+        ['status is missing', {}],
+        ['status is not an allowed value', { status: 'DONE' }],
+        ['status has the wrong case', { status: 'reading' }],
+        ['status is empty', { status: '' }],
+        ['status is null', { status: null }],
+        ['status is a number', { status: 1 }],
+        ['status is an object', { status: { value: 'READ' } }],
+        ['an extra field is sent', { status: 'READ', title: 'New title' }],
+      ])(
+        'returns 400 when %s and leaves the book untouched',
+        async (_case, payload) => {
+          const created = await createBook();
+
+          const response = await request(app.getHttpServer())
+            .patch(`/api/v1/books/${created.id}/status`)
+            .send(payload)
+            .expect(400);
+
+          const body = response.body as ErrorResponse;
+          expect(body.statusCode).toBe(400);
+          expect(body.error).toBe('Bad Request');
+
+          const after = await request(app.getHttpServer())
+            .get(`/api/v1/books/${created.id}`)
+            .expect(200);
+          expect(after.body).toEqual(created);
+        },
+      );
+    });
+  });
 });

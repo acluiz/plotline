@@ -705,6 +705,241 @@
               "body": "{\n  \"message\": [\n    \"property status should not exist\"\n  ],\n  \"error\": \"Bad Request\",\n  \"statusCode\": 400\n}"
             }
           ]
+        },
+        {
+          "name": "Update book status",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "",
+                  "const book = pm.response.json();",
+                  "",
+                  "pm.test('Returns the book with the new reading status', () => {",
+                  "  pm.expect(book.id).to.eql(pm.collectionVariables.get('bookId'));",
+                  "  pm.expect(book.status).to.eql('READING');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"READING\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/books/{{bookId}}/status",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "books",
+                "{{bookId}}",
+                "status"
+              ]
+            },
+            "description": "Changes the reading status of a book. Accepted values: `WANT_TO_READ`, `READING`, `READ`. Any other value (or extra field) returns 400. Uses the `bookId` collection variable set by \"Create book\"."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"READING\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/books/3f8c1e5a-6d2b-4b7e-9a41-0c5d7e2f9b10/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "books",
+                    "3f8c1e5a-6d2b-4b7e-9a41-0c5d7e2f9b10",
+                    "status"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": \"3f8c1e5a-6d2b-4b7e-9a41-0c5d7e2f9b10\",\n  \"title\": \"Clean Architecture\",\n  \"author\": \"Robert C. Martin\",\n  \"pages\": 432,\n  \"genre\": \"Technology\",\n  \"status\": \"READING\",\n  \"createdAt\": \"2026-11-09T22:00:00.000Z\",\n  \"updatedAt\": \"2026-11-09T22:50:00.000Z\"\n}"
+            },
+            {
+              "name": "404 Book not found",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"READING\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/books/00000000-0000-4000-8000-000000000000/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "books",
+                    "00000000-0000-4000-8000-000000000000",
+                    "status"
+                  ]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"message\": \"Book with id 00000000-0000-4000-8000-000000000000 not found\",\n  \"error\": \"Not Found\",\n  \"statusCode\": 404\n}"
+            },
+            {
+              "name": "400 Invalid status",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"DONE\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/books/3f8c1e5a-6d2b-4b7e-9a41-0c5d7e2f9b10/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "books",
+                    "3f8c1e5a-6d2b-4b7e-9a41-0c5d7e2f9b10",
+                    "status"
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"message\": [\n    \"status must be one of the following values: WANT_TO_READ, READING, READ\"\n  ],\n  \"error\": \"Bad Request\",\n  \"statusCode\": 400\n}"
+            },
+            {
+              "name": "400 Invalid UUID",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"READING\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/books/not-a-uuid/status",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "books",
+                    "not-a-uuid",
+                    "status"
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"message\": \"Validation failed (uuid is expected)\",\n  \"error\": \"Bad Request\",\n  \"statusCode\": 400\n}"
+            }
+          ]
         }
       ]
     }

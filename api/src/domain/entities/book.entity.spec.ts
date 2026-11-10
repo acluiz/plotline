@@ -243,4 +243,63 @@ describe('Book', () => {
       expect(book.updatedAt).toEqual(createdAt);
     });
   });
+  describe('changeStatus', () => {
+    const createdAt = new Date('2026-01-01T10:00:00.000Z');
+    const changedAt = new Date('2026-02-01T10:00:00.000Z');
+
+    function build(): Book {
+      return Book.create(
+        {
+          title: 'Clean Architecture',
+          author: 'Robert C. Martin',
+          pages: 432,
+          genre: 'Technology',
+        },
+        createdAt,
+      );
+    }
+
+    it.each([
+      ReadingStatus.READING,
+      ReadingStatus.READ,
+      ReadingStatus.WANT_TO_READ,
+    ])('changes the status to %s', (status) => {
+      const book = build();
+
+      book.changeStatus(status, changedAt);
+
+      expect(book.status).toBe(status);
+    });
+
+    it('refreshes updatedAt and keeps every other field', () => {
+      const book = build();
+      const id = book.id;
+
+      book.changeStatus(ReadingStatus.READING, changedAt);
+
+      expect(book.updatedAt).toEqual(changedAt);
+      expect(book.createdAt).toEqual(createdAt);
+      expect(book.id).toBe(id);
+      expect(book.title).toBe('Clean Architecture');
+      expect(book.author).toBe('Robert C. Martin');
+      expect(book.pages).toBe(432);
+      expect(book.genre).toBe('Technology');
+    });
+
+    it.each(['DONE', 'reading', '', null, undefined, 1])(
+      'rejects the invalid status %p and changes nothing',
+      (status) => {
+        const book = build();
+
+        expect(() => book.changeStatus(status as never, changedAt)).toThrow(
+          InvalidBookException,
+        );
+        expect(() => book.changeStatus(status as never, changedAt)).toThrow(
+          'status must be one of: WANT_TO_READ, READING, READ',
+        );
+        expect(book.status).toBe(ReadingStatus.WANT_TO_READ);
+        expect(book.updatedAt).toEqual(createdAt);
+      },
+    );
+  });
 });

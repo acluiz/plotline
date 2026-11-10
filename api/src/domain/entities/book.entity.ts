@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { InvalidBookException } from '../exceptions/invalid-book.exception';
-import { ReadingStatus } from '../vo/reading-status';
+import { isReadingStatus, ReadingStatus } from '../vo/reading-status';
 
 export interface CreateBookProps {
   title: string;
@@ -77,6 +77,17 @@ export class Book {
     };
 
     Object.assign(this.props, next, { updatedAt: now });
+  }
+
+  /** Changes the reading status and refreshes `updatedAt`. */
+  changeStatus(status: ReadingStatus, now: Date = new Date()): void {
+    if (!isReadingStatus(status)) {
+      throw new InvalidBookException(
+        `status must be one of: ${Object.values(ReadingStatus).join(', ')}`,
+      );
+    }
+    this.props.status = status;
+    this.props.updatedAt = now;
   }
 
   get id(): string {

@@ -175,4 +175,25 @@ describe('TypeOrmBookRepository (integration)', () => {
       expect(row.updatedAt).toEqual(updatedAt);
     });
   });
+  describe('save (status change)', () => {
+    it('persists the new reading status', async () => {
+      const book = Book.create(
+        { title: 'Dune', author: 'Frank Herbert' },
+        new Date('2026-01-01T10:00:00.000Z'),
+      );
+      await repository.save(book);
+      const changedAt = new Date('2026-01-02T10:00:00.000Z');
+
+      book.changeStatus(ReadingStatus.READ, changedAt);
+      const saved = await repository.save(book);
+
+      expect(saved.status).toBe(ReadingStatus.READ);
+      expect(await ormRepository.count()).toBe(1);
+      const found = await repository.findById(book.id);
+      expect(found?.status).toBe(ReadingStatus.READ);
+      expect(found?.updatedAt).toEqual(changedAt);
+      expect(found?.createdAt).toEqual(book.createdAt);
+      expect(found?.title).toBe('Dune');
+    });
+  });
 });

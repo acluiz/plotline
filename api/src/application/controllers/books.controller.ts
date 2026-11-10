@@ -12,11 +12,13 @@ import {
 
 import { BookOutput } from '../dto/book.output';
 import { CreateBookDto } from '../dto/create-book.dto';
+import { UpdateBookStatusDto } from '../dto/update-book-status.dto';
 import { UpdateBookDto } from '../dto/update-book.dto';
 
 import { CreateBookUseCase } from '../use-cases/create-book.use-case';
 import { GetBookByIdUseCase } from '../use-cases/get-book-by-id.use-case';
 import { ListBooksUseCase } from '../use-cases/list-books.use-case';
+import { UpdateBookStatusUseCase } from '../use-cases/update-book-status.use-case';
 import { UpdateBookUseCase } from '../use-cases/update-book.use-case';
 
 @Controller('books')
@@ -25,6 +27,7 @@ export class BooksController {
     private readonly listBooksUseCase: ListBooksUseCase,
     private readonly getBookByIdUseCase: GetBookByIdUseCase,
     private readonly updateBookUseCase: UpdateBookUseCase,
+    private readonly updateBookStatusUseCase: UpdateBookStatusUseCase,
     private readonly createBookUseCase: CreateBookUseCase,
   ) {}
 
@@ -50,5 +53,13 @@ export class BooksController {
     @Body() dto: UpdateBookDto,
   ): Promise<BookOutput> {
     return this.updateBookUseCase.execute(id, dto);
+  }
+
+  @Patch(':id/status')
+  updateStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateBookStatusDto,
+  ): Promise<BookOutput> {
+    return this.updateBookStatusUseCase.execute(id, dto.status);
   }
 }
