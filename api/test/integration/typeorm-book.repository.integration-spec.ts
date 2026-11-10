@@ -196,4 +196,33 @@ describe('TypeOrmBookRepository (integration)', () => {
       expect(found?.title).toBe('Dune');
     });
   });
+  describe('delete', () => {
+    it('removes the book and returns true', async () => {
+      const book = Book.create({ title: 'Dune', author: 'Frank Herbert' });
+      await repository.save(book);
+
+      await expect(repository.delete(book.id)).resolves.toBe(true);
+
+      expect(await ormRepository.count()).toBe(0);
+      await expect(repository.findById(book.id)).resolves.toBeNull();
+    });
+
+    it('removes only the requested book', async () => {
+      const keep = Book.create({ title: 'Keep', author: 'Author' });
+      const remove = Book.create({ title: 'Remove', author: 'Author' });
+      await repository.save(keep);
+      await repository.save(remove);
+
+      await repository.delete(remove.id);
+
+      const books = await repository.findAll();
+      expect(books.map((book) => book.id)).toEqual([keep.id]);
+    });
+
+    it('returns false when the book does not exist', async () => {
+      await expect(
+        repository.delete('3f8c1e5a-6d2b-4b7e-9a41-0c5d7e2f9b10'),
+      ).resolves.toBe(false);
+    });
+  });
 });

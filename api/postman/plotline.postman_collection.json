@@ -940,6 +940,128 @@
               "body": "{\n  \"message\": \"Validation failed (uuid is expected)\",\n  \"error\": \"Bad Request\",\n  \"statusCode\": 400\n}"
             }
           ]
+        },
+        {
+          "name": "Delete book",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204 No Content', () => pm.response.to.have.status(204));",
+                  "",
+                  "pm.test('Response has no body', () => pm.expect(pm.response.text()).to.be.empty);",
+                  "",
+                  "// The book no longer exists: run \"Create book\" again to get a new bookId."
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/books/{{bookId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "books",
+                "{{bookId}}"
+              ]
+            },
+            "description": "Removes a book. Returns 204 with no body. Returns 404 when the book does not exist and 400 when the id is not a valid UUID. Uses the `bookId` collection variable set by \"Create book\"; after deleting, run \"Create book\" again to get a new one."
+          },
+          "response": [
+            {
+              "name": "204 No Content",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/books/3f8c1e5a-6d2b-4b7e-9a41-0c5d7e2f9b10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "books",
+                    "3f8c1e5a-6d2b-4b7e-9a41-0c5d7e2f9b10"
+                  ]
+                }
+              },
+              "status": "No Content",
+              "code": 204,
+              "_postman_previewlanguage": "text",
+              "header": [],
+              "cookie": [],
+              "body": ""
+            },
+            {
+              "name": "404 Book not found",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/books/00000000-0000-4000-8000-000000000000",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "books",
+                    "00000000-0000-4000-8000-000000000000"
+                  ]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"message\": \"Book with id 00000000-0000-4000-8000-000000000000 not found\",\n  \"error\": \"Not Found\",\n  \"statusCode\": 404\n}"
+            },
+            {
+              "name": "400 Invalid UUID",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/books/not-a-uuid",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "books",
+                    "not-a-uuid"
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"message\": \"Validation failed (uuid is expected)\",\n  \"error\": \"Bad Request\",\n  \"statusCode\": 400\n}"
+            }
+          ]
         }
       ]
     }

@@ -13,6 +13,7 @@ describe('ListBooksUseCase', () => {
       save: jest.fn(),
       findAll,
       findById: jest.fn(),
+      delete: jest.fn(),
     };
     useCase = new ListBooksUseCase(repository);
   });

@@ -25,7 +25,12 @@ describe('UpdateBookUseCase', () => {
       .fn<Promise<Book | null>, [string]>()
       .mockResolvedValue(book);
     save = jest.fn((saved: Book) => Promise.resolve(saved));
-    const repository: BookRepository = { save, findAll: jest.fn(), findById };
+    const repository: BookRepository = {
+      save,
+      findAll: jest.fn(),
+      findById,
+      delete: jest.fn(),
+    };
     useCase = new UpdateBookUseCase(repository);
   });
 

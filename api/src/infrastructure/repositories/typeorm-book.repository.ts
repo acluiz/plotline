@@ -30,4 +30,9 @@ export class TypeOrmBookRepository implements BookRepository {
     const row = await this.repository.findOneBy({ id });
     return row ? BookMapper.toDomain(row) : null;
   }
+
+  async delete(id: string): Promise<boolean> {
+    const result = await this.repository.delete({ id });
+    return (result.affected ?? 0) > 0;
+  }
 }

@@ -586,4 +586,106 @@ describe('Books (e2e)', () => {
       );
     });
   });
+  describe('DELETE /api/v1/books/:id', () => {
+    async function createBook(
+      title = 'Clean Architecture',
+    ): Promise<BookResponse> {
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/books')
+        .send({ title, author: 'Robert C. Martin' })
+        .expect(201);
+      return response.body as BookResponse;
+    }
+
+    it('removes the book and returns 204 with no body', async () => {
+      const created = await createBook();
+
+      const response = await request(app.getHttpServer())
+        .delete(`/api/v1/books/${created.id}`)
+        .expect(204);
+
+      expect(response.body).toEqual({});
+      expect(response.text).toBe('');
+    });
+
+    it('removes the book from the database', async () => {
+      const created = await createBook();
+
+      await request(app.getHttpServer())
+        .delete(`/api/v1/books/${created.id}`)
+        .expect(204);
+
+      expect(await bookRepository.findOneBy({ id: created.id })).toBeNull();
+      expect(await bookRepository.count()).toBe(0);
+    });
+
+    it('makes the book unavailable afterwards', async () => {
+      const created = await createBook();
+
+      await request(app.getHttpServer())
+        .delete(`/api/v1/books/${created.id}`)
+        .expect(204);
+
+      await request(app.getHttpServer())
+        .get(`/api/v1/books/${created.id}`)
+        .expect(404);
+      const list = await request(app.getHttpServer())
+        .get('/api/v1/books')
+        .expect(200);
+      expect(list.body).toEqual([]);
+    });
+
+    it('removes only the requested book', async () => {
+      const keep = await createBook('Keep');
+      const remove = await createBook('Remove');
+
+      await request(app.getHttpServer())
+        .delete(`/api/v1/books/${remove.id}`)
+        .expect(204);
+
+      const list = await request(app.getHttpServer())
+        .get('/api/v1/books')
+        .expect(200);
+      expect((list.body as BookResponse[]).map((book) => book.id)).toEqual([
+        keep.id,
+      ]);
+    });
+
+    it('returns 404 when the book does not exist', async () => {
+      const id = randomUUID();
+
+      const response = await request(app.getHttpServer())
+        .delete(`/api/v1/books/${id}`)
+        .expect(404);
+
+      const body = response.body as ErrorResponse;
+      expect(body.statusCode).toBe(404);
+      expect(body.error).toBe('Not Found');
+      expect(body.message).toBe(`Book with id ${id} not found`);
+    });
+
+    it('returns 404 when the book was already deleted', async () => {
+      const created = await createBook();
+      await request(app.getHttpServer())
+        .delete(`/api/v1/books/${created.id}`)
+        .expect(204);
+
+      await request(app.getHttpServer())
+        .delete(`/api/v1/books/${created.id}`)
+        .expect(404);
+    });
+
+    it.each(['not-a-uuid', '123'])(
+      'returns 400 when the id %p is not a valid UUID',
+      async (id) => {
+        const response = await request(app.getHttpServer())
+          .delete(`/api/v1/books/${id}`)
+          .expect(400);
+
+        const body = response.body as ErrorResponse;
+        expect(body.statusCode).toBe(400);
+        expect(body.error).toBe('Bad Request');
+      },
+    );
+  });
 });

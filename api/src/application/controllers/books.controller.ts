@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   HttpStatus,
@@ -16,6 +17,7 @@ import { UpdateBookStatusDto } from '../dto/update-book-status.dto';
 import { UpdateBookDto } from '../dto/update-book.dto';
 
 import { CreateBookUseCase } from '../use-cases/create-book.use-case';
+import { DeleteBookUseCase } from '../use-cases/delete-book.use-case';
 import { GetBookByIdUseCase } from '../use-cases/get-book-by-id.use-case';
 import { ListBooksUseCase } from '../use-cases/list-books.use-case';
 import { UpdateBookStatusUseCase } from '../use-cases/update-book-status.use-case';
@@ -28,6 +30,7 @@ export class BooksController {
     private readonly getBookByIdUseCase: GetBookByIdUseCase,
     private readonly updateBookUseCase: UpdateBookUseCase,
     private readonly updateBookStatusUseCase: UpdateBookStatusUseCase,
+    private readonly deleteBookUseCase: DeleteBookUseCase,
     private readonly createBookUseCase: CreateBookUseCase,
   ) {}
 
@@ -61,5 +64,11 @@ export class BooksController {
     @Body() dto: UpdateBookStatusDto,
   ): Promise<BookOutput> {
     return this.updateBookStatusUseCase.execute(id, dto.status);
+  }
+
+  @Delete(':id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  delete(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
+    return this.deleteBookUseCase.execute(id);
   }
 }

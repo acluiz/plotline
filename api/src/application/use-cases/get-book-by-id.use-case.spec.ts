@@ -14,6 +14,7 @@ describe('GetBookByIdUseCase', () => {
       save: jest.fn(),
       findAll: jest.fn(),
       findById,
+      delete: jest.fn(),
     };
     useCase = new GetBookByIdUseCase(repository);
   });
