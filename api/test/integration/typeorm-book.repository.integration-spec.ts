@@ -141,4 +141,38 @@ describe('TypeOrmBookRepository (integration)', () => {
       ).resolves.toBeNull();
     });
   });
+  describe('save (update)', () => {
+    it('persists changes to an existing book without creating a new one', async () => {
+      const book = Book.create(
+        {
+          title: 'Clean Architecture',
+          author: 'Robert C. Martin',
+          pages: 432,
+          genre: 'Technology',
+        },
+        new Date('2026-01-01T10:00:00.000Z'),
+      );
+      await repository.save(book);
+      const updatedAt = new Date('2026-01-02T10:00:00.000Z');
+
+      book.update(
+        { title: 'Updated title', pages: 450, genre: null },
+        updatedAt,
+      );
+      const saved = await repository.save(book);
+
+      expect(saved.title).toBe('Updated title');
+      expect(await ormRepository.count()).toBe(1);
+      const row = await ormRepository.findOneByOrFail({ id: book.id });
+      expect(row).toMatchObject({
+        title: 'Updated title',
+        author: 'Robert C. Martin',
+        pages: 450,
+        genre: null,
+        status: 'WANT_TO_READ',
+      });
+      expect(row.createdAt).toEqual(book.createdAt);
+      expect(row.updatedAt).toEqual(updatedAt);
+    });
+  });
 });

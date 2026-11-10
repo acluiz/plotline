@@ -428,6 +428,283 @@
               "body": "{\n  \"message\": \"Validation failed (uuid is expected)\",\n  \"error\": \"Bad Request\",\n  \"statusCode\": 400\n}"
             }
           ]
+        },
+        {
+          "name": "Update book",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "",
+                  "const book = pm.response.json();",
+                  "",
+                  "pm.test('Returns the updated book', () => {",
+                  "  pm.expect(book.id).to.eql(pm.collectionVariables.get('bookId'));",
+                  "  pm.expect(book.title).to.eql(\"Clean Architecture: A Craftsman's Guide\");",
+                  "  pm.expect(book.pages).to.eql(450);",
+                  "  pm.expect(book.genre).to.eql('Software Engineering');",
+                  "  pm.expect(book.status).to.be.oneOf(['WANT_TO_READ', 'READING', 'READ']);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Clean Architecture: A Craftsman's Guide\",\n  \"author\": \"Robert C. Martin\",\n  \"pages\": 450,\n  \"genre\": \"Software Engineering\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/books/{{bookId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "books",
+                "{{bookId}}"
+              ]
+            },
+            "description": "Partially updates a book's descriptive fields. Only the fields sent are changed; send `null` for `pages` or `genre` to clear them. `id` and `status` cannot be changed here (use `PATCH /books/:id/status`). Uses the `bookId` collection variable set by \"Create book\"."
+          },
+          "response": [
+            {
+              "name": "200 OK",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"title\": \"Clean Architecture: A Craftsman's Guide\",\n  \"author\": \"Robert C. Martin\",\n  \"pages\": 450,\n  \"genre\": \"Software Engineering\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/books/3f8c1e5a-6d2b-4b7e-9a41-0c5d7e2f9b10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "books",
+                    "3f8c1e5a-6d2b-4b7e-9a41-0c5d7e2f9b10"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": \"3f8c1e5a-6d2b-4b7e-9a41-0c5d7e2f9b10\",\n  \"title\": \"Clean Architecture: A Craftsman's Guide\",\n  \"author\": \"Robert C. Martin\",\n  \"pages\": 450,\n  \"genre\": \"Software Engineering\",\n  \"status\": \"WANT_TO_READ\",\n  \"createdAt\": \"2026-11-09T22:00:00.000Z\",\n  \"updatedAt\": \"2026-11-09T22:40:00.000Z\"\n}"
+            },
+            {
+              "name": "200 OK (partial update)",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"pages\": 450\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/books/3f8c1e5a-6d2b-4b7e-9a41-0c5d7e2f9b10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "books",
+                    "3f8c1e5a-6d2b-4b7e-9a41-0c5d7e2f9b10"
+                  ]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": \"3f8c1e5a-6d2b-4b7e-9a41-0c5d7e2f9b10\",\n  \"title\": \"Clean Architecture\",\n  \"author\": \"Robert C. Martin\",\n  \"pages\": 450,\n  \"genre\": \"Technology\",\n  \"status\": \"WANT_TO_READ\",\n  \"createdAt\": \"2026-11-09T22:00:00.000Z\",\n  \"updatedAt\": \"2026-11-09T22:40:00.000Z\"\n}"
+            },
+            {
+              "name": "404 Book not found",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"pages\": 450\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/books/00000000-0000-4000-8000-000000000000",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "books",
+                    "00000000-0000-4000-8000-000000000000"
+                  ]
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"message\": \"Book with id 00000000-0000-4000-8000-000000000000 not found\",\n  \"error\": \"Not Found\",\n  \"statusCode\": 404\n}"
+            },
+            {
+              "name": "400 Invalid pages",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"pages\": 0\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/books/3f8c1e5a-6d2b-4b7e-9a41-0c5d7e2f9b10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "books",
+                    "3f8c1e5a-6d2b-4b7e-9a41-0c5d7e2f9b10"
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"message\": [\n    \"pages must be a positive number\"\n  ],\n  \"error\": \"Bad Request\",\n  \"statusCode\": 400\n}"
+            },
+            {
+              "name": "400 Status not allowed",
+              "originalRequest": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"READ\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/books/3f8c1e5a-6d2b-4b7e-9a41-0c5d7e2f9b10",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "v1",
+                    "books",
+                    "3f8c1e5a-6d2b-4b7e-9a41-0c5d7e2f9b10"
+                  ]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json; charset=utf-8"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"message\": [\n    \"property status should not exist\"\n  ],\n  \"error\": \"Bad Request\",\n  \"statusCode\": 400\n}"
+            }
+          ]
         }
       ]
     }

@@ -9,6 +9,15 @@ export interface CreateBookProps {
   genre?: string | null;
 }
 
+export interface UpdateBookProps {
+  title?: string;
+  author?: string;
+  /** `null` clears the value; `undefined` leaves it unchanged. */
+  pages?: number | null;
+  /** `null` clears the value; `undefined` leaves it unchanged. */
+  genre?: string | null;
+}
+
 export interface BookProps {
   id: string;
   title: string;
@@ -39,6 +48,35 @@ export class Book {
   /** Rebuilds a Book from persisted data, without generating new values. */
   static restore(props: BookProps): Book {
     return new Book({ ...props });
+  }
+
+  /**
+   * Applies a partial update to the descriptive fields. Only the fields that
+   * are provided change; id, status and createdAt are never touched. Nothing
+   * is changed if any provided field is invalid.
+   */
+  update(changes: UpdateBookProps, now: Date = new Date()): void {
+    const hasChanges =
+      changes.title !== undefined ||
+      changes.author !== undefined ||
+      changes.pages !== undefined ||
+      changes.genre !== undefined;
+    if (!hasChanges) {
+      return;
+    }
+
+    const next = {
+      title: changes.title
+        ? requireText('title', changes.title)
+        : this.props.title,
+      author: changes.author
+        ? requireText('author', changes.author)
+        : this.props.author,
+      pages: changes.pages ? normalizePages(changes.pages) : this.props.pages,
+      genre: changes.genre ? normalizeGenre(changes.genre) : this.props.genre,
+    };
+
+    Object.assign(this.props, next, { updatedAt: now });
   }
 
   get id(): string {

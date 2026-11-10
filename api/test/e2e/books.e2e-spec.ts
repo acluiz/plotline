@@ -287,4 +287,182 @@ describe('Books (e2e)', () => {
       },
     );
   });
+  describe('PATCH /api/v1/books/:id', () => {
+    async function createBook(): Promise<BookResponse> {
+      const response = await request(app.getHttpServer())
+        .post('/api/v1/books')
+        .send({
+          title: 'Clean Architecture',
+          author: 'Robert C. Martin',
+          pages: 432,
+          genre: 'Technology',
+        })
+        .expect(201);
+      return response.body as BookResponse;
+    }
+
+    it('updates all descriptive fields and returns 200', async () => {
+      const created = await createBook();
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/v1/books/${created.id}`)
+        .send({
+          title: "Clean Architecture: A Craftsman's Guide",
+          author: 'Robert C. Martin',
+          pages: 450,
+          genre: 'Software Engineering',
+        })
+        .expect(200);
+
+      const body = response.body as BookResponse;
+      expect(body).toMatchObject({
+        id: created.id,
+        title: "Clean Architecture: A Craftsman's Guide",
+        author: 'Robert C. Martin',
+        pages: 450,
+        genre: 'Software Engineering',
+        status: 'WANT_TO_READ',
+        createdAt: created.createdAt,
+      });
+      expect(Date.parse(body.updatedAt)).toBeGreaterThanOrEqual(
+        Date.parse(created.updatedAt),
+      );
+    });
+
+    it('updates only the provided fields', async () => {
+      const created = await createBook();
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/v1/books/${created.id}`)
+        .send({ pages: 450 })
+        .expect(200);
+
+      expect(response.body).toMatchObject({
+        id: created.id,
+        title: 'Clean Architecture',
+        author: 'Robert C. Martin',
+        pages: 450,
+        genre: 'Technology',
+        status: 'WANT_TO_READ',
+      });
+    });
+
+    it('persists the update in the database', async () => {
+      const created = await createBook();
+
+      await request(app.getHttpServer())
+        .patch(`/api/v1/books/${created.id}`)
+        .send({ title: 'Persisted title' })
+        .expect(200);
+
+      const row = await bookRepository.findOneByOrFail({ id: created.id });
+      expect(row.title).toBe('Persisted title');
+      expect(row.author).toBe('Robert C. Martin');
+      expect(await bookRepository.count()).toBe(1);
+    });
+
+    it('does not change the reading status', async () => {
+      const created = await createBook();
+      await bookRepository.update({ id: created.id }, { status: 'READING' });
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/v1/books/${created.id}`)
+        .send({ title: 'Another title' })
+        .expect(200);
+
+      expect((response.body as BookResponse).status).toBe('READING');
+    });
+
+    it('clears pages and genre when null is sent', async () => {
+      const created = await createBook();
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/v1/books/${created.id}`)
+        .send({ pages: null, genre: null })
+        .expect(200);
+
+      expect(response.body).toMatchObject({
+        title: 'Clean Architecture',
+        pages: null,
+        genre: null,
+      });
+    });
+
+    it('returns the book unchanged when the body is empty', async () => {
+      const created = await createBook();
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/v1/books/${created.id}`)
+        .send({})
+        .expect(200);
+
+      expect(response.body).toEqual(created);
+    });
+
+    it('returns 404 when the book does not exist', async () => {
+      const id = randomUUID();
+
+      const response = await request(app.getHttpServer())
+        .patch(`/api/v1/books/${id}`)
+        .send({ title: 'Does not matter' })
+        .expect(404);
+
+      const body = response.body as ErrorResponse;
+      expect(body.statusCode).toBe(404);
+      expect(body.error).toBe('Not Found');
+      expect(body.message).toBe(`Book with id ${id} not found`);
+    });
+
+    it('returns 400 when the id is not a valid UUID', async () => {
+      await request(app.getHttpServer())
+        .patch('/api/v1/books/not-a-uuid')
+        .send({ title: 'Does not matter' })
+        .expect(400);
+    });
+
+    describe('validation errors', () => {
+      it.each([
+        ['title is empty', { title: '' }],
+        ['title is blank', { title: '   ' }],
+        ['title is null', { title: null }],
+        ['title is not a string', { title: 123 }],
+        ['author is empty', { author: '' }],
+        ['author is blank', { author: '   ' }],
+        ['author is null', { author: null }],
+        ['pages is zero', { pages: 0 }],
+        ['pages is negative', { pages: -5 }],
+        ['pages is not an integer', { pages: 10.5 }],
+        ['pages is a string', { pages: '450' }],
+        ['genre is empty', { genre: '' }],
+        ['genre is blank', { genre: '   ' }],
+        ['genre is not a string', { genre: 42 }],
+        ['status is sent', { status: 'READ' }],
+        ['id is sent', { id: 'b1d4a1a2-0c54-4d6a-8d5e-2a2f4c9d1e11' }],
+        ['an unknown field is sent', { rating: 5 }],
+        [
+          'a valid field is sent with an invalid one',
+          { title: 'New', pages: 0 },
+        ],
+      ])(
+        'returns 400 when %s and leaves the book untouched',
+        async (_case, payload) => {
+          const created = await createBook();
+
+          const response = await request(app.getHttpServer())
+            .patch(`/api/v1/books/${created.id}`)
+            .send(payload)
+            .expect(400);
+
+          const body = response.body as ErrorResponse;
+          expect(body.statusCode).toBe(400);
+          expect(body.error).toBe('Bad Request');
+
+          const after = await request(app.getHttpServer())
+            .get(`/api/v1/books/${created.id}`)
+            .expect(200);
+          expect(after.body).toEqual(created);
+        },
+      );
+    });
+  });
 });

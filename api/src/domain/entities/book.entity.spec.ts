@@ -132,4 +132,115 @@ describe('Book', () => {
       expect(book.updatedAt).toEqual(props.updatedAt);
     });
   });
+  describe('update', () => {
+    const createdAt = new Date('2026-01-01T10:00:00.000Z');
+    const updatedAt = new Date('2026-02-01T10:00:00.000Z');
+
+    function build(): Book {
+      return Book.restore({
+        id: '4f0b7a4e-8f0a-4d52-9d2f-5b6f3c1f2a10',
+        title: 'Clean Architecture',
+        author: 'Robert C. Martin',
+        pages: 432,
+        genre: 'Technology',
+        status: ReadingStatus.READING,
+        createdAt,
+        updatedAt: createdAt,
+      });
+    }
+
+    it('updates only the provided fields', () => {
+      const book = build();
+
+      book.update({ pages: 450 }, updatedAt);
+
+      expect(book.pages).toBe(450);
+      expect(book.title).toBe('Clean Architecture');
+      expect(book.author).toBe('Robert C. Martin');
+      expect(book.genre).toBe('Technology');
+    });
+
+    it('updates all descriptive fields and trims text', () => {
+      const book = build();
+
+      book.update(
+        {
+          title: "  Clean Architecture: A Craftsman's Guide ",
+          author: ' Uncle Bob ',
+          pages: 450,
+          genre: ' Software Engineering ',
+        },
+        updatedAt,
+      );
+
+      expect(book.title).toBe("Clean Architecture: A Craftsman's Guide");
+      expect(book.author).toBe('Uncle Bob');
+      expect(book.pages).toBe(450);
+      expect(book.genre).toBe('Software Engineering');
+    });
+
+    it('refreshes updatedAt and keeps id, status and createdAt', () => {
+      const book = build();
+
+      book.update({ title: 'New title' }, updatedAt);
+
+      expect(book.updatedAt).toEqual(updatedAt);
+      expect(book.createdAt).toEqual(createdAt);
+      expect(book.id).toBe('4f0b7a4e-8f0a-4d52-9d2f-5b6f3c1f2a10');
+      expect(book.status).toBe(ReadingStatus.READING);
+    });
+
+    it('clears pages and genre when null is provided', () => {
+      const book = build();
+
+      book.update({ pages: null, genre: null }, updatedAt);
+
+      expect(book.pages).toBeNull();
+      expect(book.genre).toBeNull();
+      expect(book.title).toBe('Clean Architecture');
+    });
+
+    it('does nothing when no field is provided', () => {
+      const book = build();
+
+      book.update({}, updatedAt);
+
+      expect(book.updatedAt).toEqual(createdAt);
+      expect(book.title).toBe('Clean Architecture');
+    });
+
+    it.each([
+      ['title is blank', { title: '  ' }, 'title is required'],
+      ['title is null', { title: null }, 'title is required'],
+      ['author is blank', { author: '' }, 'author is required'],
+      ['author is null', { author: null }, 'author is required'],
+      ['pages is zero', { pages: 0 }, 'pages must be a positive integer'],
+      ['pages is negative', { pages: -1 }, 'pages must be a positive integer'],
+      [
+        'pages is not an integer',
+        { pages: 1.5 },
+        'pages must be a positive integer',
+      ],
+      ['genre is blank', { genre: ' ' }, 'genre must be a non-empty string'],
+    ])('rejects the update when %s', (_case, changes, message) => {
+      const book = build();
+
+      expect(() => book.update(changes as never, updatedAt)).toThrow(
+        InvalidBookException,
+      );
+      expect(() => book.update(changes as never, updatedAt)).toThrow(message);
+    });
+
+    it('changes nothing when any provided field is invalid', () => {
+      const book = build();
+
+      expect(() =>
+        book.update({ title: 'Valid new title', pages: -1 }, updatedAt),
+      ).toThrow(InvalidBookException);
+
+      expect(book.title).toBe('Clean Architecture');
+      expect(book.pages).toBe(432);
+      expect(book.updatedAt).toEqual(createdAt);
+    });
+  });
 });
