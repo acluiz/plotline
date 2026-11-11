@@ -7,7 +7,8 @@ permissions:
   contents: read
 
 jobs:
-  deploy:
+  build:
+    name: Build application
     runs-on: ubuntu-latest
 
     defaults:
@@ -32,7 +33,7 @@ jobs:
           cache-dependency-path: api/pnpm-lock.yaml
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install
 
       - name: Build application
         run: pnpm build
