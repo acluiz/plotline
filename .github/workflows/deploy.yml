@@ -72,7 +72,7 @@ jobs:
         id: existing
         run: |
           ip=$(aws ec2 describe-instances \
-            --filters "Name=tag:Name,Values=$PROJECT_NAME" "Name=instance-state-name,Values=pending,running,stopping,stopped" \
+            --filters "Name=tag:Name,Values=$PROJECT_NAME" "Name=tag:ManagedBy,Values=terraform" "Name=instance-state-name,Values=pending,running,stopping,stopped" \
             --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
           if [ "$ip" != "None" ] && [ -n "$ip" ]; then
             echo "Instância já existe em $ip, pulando Terraform."
