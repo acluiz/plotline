@@ -6,6 +6,16 @@ on: workflow_dispatch
 permissions:
   contents: read
 
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
+  PROJECT_NAME: plotline-api
+  APP_DIR: /opt/plotline-api
+  CONTAINER_NAME: plotline-api
+
 jobs:
   build:
     name: Build application
@@ -35,3 +45,203 @@ jobs:
 
       - name: Build application
         run: pnpm build
+
+  infra:
+    name: Provision EC2 (Terraform)
+    runs-on: ubuntu-latest
+
+    outputs:
+      public_ip: ${{ steps.ip.outputs.public_ip }}
+
+    defaults:
+      run:
+        working-directory: ./infra/terraform
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Look for existing instance
+        id: existing
+        run: |
+          ip=$(aws ec2 describe-instances \
+            --filters "Name=tag:Name,Values=$PROJECT_NAME" "Name=instance-state-name,Values=pending,running,stopping,stopped" \
+            --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
+          if [ "$ip" != "None" ] && [ -n "$ip" ]; then
+            echo "Instância já existe em $ip, pulando Terraform."
+            echo "public_ip=$ip" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Setup Terraform
+        if: steps.existing.outputs.public_ip == ''
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
+      - name: Terraform apply
+        id: apply
+        if: steps.existing.outputs.public_ip == ''
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          printf '%s\n' "$EC2_SSH_KEY" > /tmp/key && chmod 600 /tmp/key
+          export TF_VAR_ssh_public_key="$(ssh-keygen -y -f /tmp/key)"
+          export TF_VAR_aws_region="$AWS_REGION"
+          export TF_VAR_project_name="$PROJECT_NAME"
+          rm /tmp/key
+          terraform init -input=false
+          terraform apply -auto-approve -input=false
+          echo "public_ip=$(terraform output -raw public_ip)" >> "$GITHUB_OUTPUT"
+
+      - name: Export public IP
+        id: ip
+        run: |
+          ip="${{ steps.existing.outputs.public_ip || steps.apply.outputs.public_ip }}"
+          echo "public_ip=$ip" >> "$GITHUB_OUTPUT"
+          echo "### API: http://$ip/api/v1" >> "$GITHUB_STEP_SUMMARY"
+
+  image:
+    name: Build and push Docker image
+    needs: build
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Define image name
+        id: meta
+        run: |
+          owner="$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')"
+          echo "image=ghcr.io/${owner}/plotline-api:${{ github.sha }}" >> "$GITHUB_OUTPUT"
+          echo "latest=ghcr.io/${owner}/plotline-api:latest" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./api
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image }}
+            ${{ steps.meta.outputs.latest }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to EC2
+    needs: [infra, image]
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: read
+
+    env:
+      IMAGE: ${{ needs.image.outputs.image }}
+      EC2_HOST: ${{ needs.infra.outputs.public_ip }}
+
+    steps:
+      - name: Configure SSH
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          cat >> ~/.ssh/config <<CFG
+          Host ec2
+            HostName $EC2_HOST
+            User ec2-user
+            IdentityFile ~/.ssh/id_ed25519
+            StrictHostKeyChecking accept-new
+            ConnectTimeout 10
+            ServerAliveInterval 30
+          CFG
+
+      - name: Wait for instance
+        run: |
+          for i in $(seq 1 40); do
+            if ssh ec2 'docker info >/dev/null 2>&1'; then
+              echo "Instância pronta."
+              exit 0
+            fi
+            echo "Tentativa $i: aguardando SSH/Docker..."
+            sleep 10
+          done
+          echo "Instância não ficou pronta a tempo"
+          exit 1
+
+      - name: Upload environment file
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_SSL: ${{ vars.DATABASE_SSL || 'true' }}
+          DATABASE_SCHEMA: ${{ vars.DATABASE_SCHEMA || 'public' }}
+        run: |
+          printf 'PORT=3000\nNODE_ENV=production\nDATABASE_URL=%s\nDATABASE_SSL=%s\nDATABASE_SCHEMA=%s\n' \
+            "$DATABASE_URL" "$DATABASE_SSL" "$DATABASE_SCHEMA" \
+            | ssh ec2 "umask 077 && sudo mkdir -p $APP_DIR && sudo chown ec2-user $APP_DIR && cat > $APP_DIR/.env"
+
+      - name: Pull image
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$GHCR_TOKEN" | ssh ec2 "docker login ghcr.io -u ${{ github.actor }} --password-stdin"
+          ssh ec2 "docker pull $IMAGE && docker logout ghcr.io"
+
+      - name: Run migrations
+        run: |
+          ssh ec2 "docker run --rm --env-file $APP_DIR/.env $IMAGE \
+            node node_modules/typeorm/cli.js migration:run -d dist/infrastructure/database/data-source.js"
+
+      - name: Start new container
+        run: |
+          ssh ec2 bash -s <<SCRIPT
+          set -euo pipefail
+          docker rm -f $CONTAINER_NAME 2>/dev/null || true
+          docker run -d \
+            --name $CONTAINER_NAME \
+            --restart unless-stopped \
+            --env-file $APP_DIR/.env \
+            -p 80:3000 \
+            $IMAGE
+          docker image prune -af --filter "until=168h" >/dev/null || true
+          SCRIPT
+
+      - name: Health check
+        run: |
+          for i in $(seq 1 15); do
+            status=$(curl -s -o /dev/null -w '%{http_code}' "http://$EC2_HOST/api/v1/books" || true)
+            if [ "$status" != "000" ] && [ "$status" -lt 500 ]; then
+              echo "API respondeu com HTTP $status em http://$EC2_HOST/api/v1"
+              exit 0
+            fi
+            echo "Tentativa $i: HTTP $status, aguardando..."
+            sleep 4
+          done
+          echo "API não respondeu a tempo"
+          ssh ec2 "docker logs --tail 100 $CONTAINER_NAME"
+          exit 1
