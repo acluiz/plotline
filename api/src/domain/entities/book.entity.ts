@@ -66,14 +66,22 @@ export class Book {
     }
 
     const next = {
-      title: changes.title
-        ? requireText('title', changes.title)
-        : this.props.title,
-      author: changes.author
-        ? requireText('author', changes.author)
-        : this.props.author,
-      pages: changes.pages ? normalizePages(changes.pages) : this.props.pages,
-      genre: changes.genre ? normalizeGenre(changes.genre) : this.props.genre,
+      title:
+        changes.title !== undefined
+          ? requireText('title', changes.title)
+          : this.props.title,
+      author:
+        changes.author !== undefined
+          ? requireText('author', changes.author)
+          : this.props.author,
+      pages:
+        changes.pages !== undefined
+          ? normalizePages(changes.pages)
+          : this.props.pages,
+      genre:
+        changes.genre !== undefined
+          ? normalizeGenre(changes.genre)
+          : this.props.genre,
     };
 
     Object.assign(this.props, next, { updatedAt: now });

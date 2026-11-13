@@ -43,11 +43,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install
 
+      - name: Run unit tests
+        run: pnpm test
+
       - name: Build application
         run: pnpm build
 
   infra:
     name: Provision EC2 (Terraform)
+    needs: build
     runs-on: ubuntu-latest
 
     outputs:
