@@ -1,7 +1,10 @@
 name: Deploy
 run-name: "Deploy #${{ github.run_number }} to production"
 
-on: workflow_dispatch
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -17,41 +20,13 @@ env:
   CONTAINER_NAME: plotline-api
 
 jobs:
-  build:
-    name: Build application
-    runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: ./api
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          package_json_file: api/package.json
-          run_install: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Run unit tests
-        run: pnpm test
-
-      - name: Build application
-        run: pnpm build
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yml
 
   infra:
     name: Provision EC2 (Terraform)
-    needs: build
+    needs: ci
     runs-on: ubuntu-latest
 
     outputs:
@@ -113,7 +88,7 @@ jobs:
 
   image:
     name: Build and push Docker image
-    needs: build
+    needs: ci
     runs-on: ubuntu-latest
 
     permissions:
