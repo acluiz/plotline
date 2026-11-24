@@ -1,0 +1,19 @@
+# Descrição declarativa do container da API em produção.
+# Usado por deploy.sh na EC2: `docker compose up -d`.
+#
+# Variáveis esperadas:
+#   IMAGE  imagem a executar (ex.: ghcr.io/acluiz/plotline-api:<sha>). Definida por deploy.sh.
+#
+# O arquivo .env (DATABASE_URL etc.) fica na mesma pasta, na EC2, e é gerado
+# pelo pipeline a partir dos GitHub Secrets. Ele nunca é versionado.
+
+services:
+  api:
+    image: ${IMAGE:?defina IMAGE com a imagem a executar}
+    container_name: plotline-api
+    # Reinicia sozinho se o processo cair ou se a instância for reiniciada.
+    restart: unless-stopped
+    env_file: .env
+    # Porta 80 da instância -> porta 3000 do container (PORT da aplicação).
+    ports:
+      - "80:3000"

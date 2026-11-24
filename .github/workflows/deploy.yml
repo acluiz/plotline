@@ -17,7 +17,6 @@ env:
   AWS_REGION: ${{ vars.AWS_REGION || 'us-east-1' }}
   PROJECT_NAME: plotline-api
   APP_DIR: /opt/plotline-api
-  CONTAINER_NAME: plotline-api
 
 jobs:
   ci:
@@ -184,43 +183,20 @@ jobs:
             "$DATABASE_URL" "$DATABASE_SSL" "$DATABASE_SCHEMA" \
             | ssh ec2 "umask 077 && sudo mkdir -p $APP_DIR && sudo chown ec2-user $APP_DIR && cat > $APP_DIR/.env"
 
-      - name: Pull image
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to registry on EC2
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "$GHCR_TOKEN" | ssh ec2 "docker login ghcr.io -u ${{ github.actor }} --password-stdin"
-          ssh ec2 "docker pull $IMAGE && docker logout ghcr.io"
+        run: echo "$GHCR_TOKEN" | ssh ec2 "docker login ghcr.io -u ${{ github.actor }} --password-stdin"
 
-      - name: Run migrations
-        run: |
-          ssh ec2 "docker run --rm --env-file $APP_DIR/.env $IMAGE \
-            node node_modules/typeorm/cli.js migration:run -d dist/infrastructure/database/data-source.js"
+      - name: Copy deploy scripts
+        run: scp deploy/docker-compose.yml deploy/deploy.sh "ec2:$APP_DIR/"
 
-      - name: Start new container
-        run: |
-          ssh ec2 bash -s <<SCRIPT
-          set -euo pipefail
-          docker rm -f $CONTAINER_NAME 2>/dev/null || true
-          docker run -d \
-            --name $CONTAINER_NAME \
-            --restart unless-stopped \
-            --env-file $APP_DIR/.env \
-            -p 80:3000 \
-            $IMAGE
-          docker image prune -af --filter "until=168h" >/dev/null || true
-          SCRIPT
+      - name: Run deploy script
+        run: ssh ec2 "APP_DIR=$APP_DIR bash $APP_DIR/deploy.sh $IMAGE"
 
-      - name: Health check
-        run: |
-          for i in $(seq 1 15); do
-            status=$(curl -s -o /dev/null -w '%{http_code}' "http://$EC2_HOST/api/v1/books" || true)
-            if [ "$status" != "000" ] && [ "$status" -lt 500 ]; then
-              echo "API respondeu com HTTP $status em http://$EC2_HOST/api/v1"
-              exit 0
-            fi
-            echo "Tentativa $i: HTTP $status, aguardando..."
-            sleep 4
-          done
-          echo "API não respondeu a tempo"
-          ssh ec2 "docker logs --tail 100 $CONTAINER_NAME"
-          exit 1
+      - name: Logout from registry on EC2
+        if: always()
+        run: ssh ec2 "docker logout ghcr.io"
